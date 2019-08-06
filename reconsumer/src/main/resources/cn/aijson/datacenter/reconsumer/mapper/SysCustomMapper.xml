@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.aijson.datacenter.reconsumer.mapper.SysCustomMapper">
+    <resultMap id="userDto" type="cn.aijson.datacenter.reconsumer.dto.UserDto">
+        <result property="id" column="id"></result>
+        <result property="name" column="username"></result>
+        <result property="password" column="password"></result>
+        <collection property="sysUgroup" ofType="cn.aijson.datacenter.reconsumer.entity.SysUgroup" resultMap="userGroup"></collection>
+        <collection property="roles" ofType="cn.aijson.datacenter.reconsumer.entity.SysRole" resultMap="role" javaType="java.util.List"></collection>
+        <collection property="perms" ofType="cn.aijson.datacenter.reconsumer.entity.SysPerm" resultMap="perm" javaType="java.util.List"></collection>
+    </resultMap>
+    <resultMap id="ugroupDto" type="cn.aijson.datacenter.reconsumer.dto.UgroupDto">
+        <result property="id" column="id"></result>
+        <result property="ugroupName" column="ugroup_name"></result>
+        <collection property="roles" ofType="cn.aijson.datacenter.reconsumer.entity.SysRole" resultMap="role" javaType="java.util.List"></collection>
+        <collection property="perms" ofType="cn.aijson.datacenter.reconsumer.entity.SysPerm" resultMap="perm" javaType="java.util.List"></collection>
+    </resultMap>
+    <resultMap id="roleDto" type="cn.aijson.datacenter.reconsumer.dto.RoleDto">
+        <result property="id" column="id"></result>
+        <result property="roleName" column="role_name"></result>
+        <collection property="perms" ofType="cn.aijson.datacenter.reconsumer.entity.SysPerm" resultMap="perm" javaType="java.util.List"></collection>
+    </resultMap>
+    <resultMap id="userGroup" type="cn.aijson.datacenter.reconsumer.entity.SysUgroup">
+        <result property="id" column="userGroupId"></result>
+        <result property="ugroupName" column="ugroup_name"></result>
+        <result property="created" column="ug_created"></result>
+        <result property="updated" column="ug_updated"></result>
+    </resultMap>
+    <resultMap id="role" type="cn.aijson.datacenter.reconsumer.entity.SysRole">
+        <!--<id column="roleId"></id>-->
+        <result property="id" column="roleId"></result>
+        <result property="roleName" column="role_name"></result>
+        <result property="created" column="r_created"></result>
+        <result property="updated" column="r_updated"></result>
+    </resultMap>
+    <resultMap id="perm" type="cn.aijson.datacenter.reconsumer.entity.SysPerm">
+        <!--<id column="permId"></id>-->
+        <result property="id" column="permId"></result>
+        <result property="created" column="p_created"></result>
+        <result property="parent" column="parent"></result>
+        <result property="pval" column="pval"></result>
+        <result property="leaf" column="leaf"></result>
+        <result property="name" column="gname"></result>
+        <result property="type" column="gtype"></result>
+        <result property="updated" column="p_updated"></result>
+    </resultMap>
+    <sql id="result">
+        a.id, a.name as username, a.password, b.id as userGroupId,
+        c.ugroup_name,c.created as ug_created,c.updated as ug_updated,
+        e.id as roleId,e.role_name as role_name,e.created as r_created,e.updated as r_updated,
+        g.id as permId ,g.pval as pval,g.parent as parent,g.name as gname,g.type as gtype,
+        g.leaf as leaf,g.created as p_created,g.updated as p_updated
+    </sql>
+    <select id="queryAllUser" resultMap="userDto" >
+
+        select
+        <include refid="result"></include>
+        from sys_user a
+        left join sys_user_group b on a.id=b.user_id
+        left  join  sys_ugroup c on c.id= b.ugroup_id
+        left join sys_ugroup_role d on  d.role_id=c.id
+        left join sys_role e on e.id=d.role_id
+        left join sys_role_perm f on f.role_id=e.id
+        left join sys_perm g on  g.id= f.perm_id
+
+    </select>
+    <select id="queryUser" parameterType="long" resultMap="userDto"  >
+        select
+        <include refid="result"></include>
+        from sys_user a
+        left join sys_user_group b on a.id=b.user_id
+        left  join  sys_ugroup c on c.id= b.ugroup_id
+        left join sys_ugroup_role d on  d.role_id=c.id
+        left join sys_role e on e.id=d.role_id
+        left join sys_role_perm f on f.role_id=e.id
+        left join sys_perm g on  g.id= f.perm_id
+        <where>
+            a.id=#{userId}
+        </where>
+    </select>
+
+    <select id="queryPermsByUserId" parameterType="long" resultType="java.lang.Long">
+        select
+            perm_id
+        from sys_role_perm
+        <where>
+            role_id
+            in
+            (select role_id from sys_ugroup_role where ugroup_id
+            in
+            (select ugroup_id from sys_user_group where user_id=#{userId}))
+        </where>
+
+    </select>
+
+    <select id="selectUgroupById" parameterType="long" resultMap="ugroupDto">
+          select c.id, c.ugroup_name,c.created as ug_created,c.updated as ug_updated,
+         e.id as roleId,e.role_name as role_name,e.created as r_created,e.updated as r_updated,
+          g.id as permId ,g.pval as pval,g.parent as parent,g.name as gname,g.type as gtype,
+          g.leaf as leaf,g.created as p_created,g.updated as p_updated
+
+          from sys_ugroup c
+                left join sys_ugroup_role d on  d.role_id=c.id
+                left join sys_role e on e.id=d.role_id
+              left join sys_role_perm f on f.role_id=e.id
+              left join sys_perm g on  g.id= f.perm_id
+              <where>
+                  c.id=#{id}
+              </where>
+    </select>
+    <select id="selectRoleById" parameterType="long" resultMap="roleDto">
+        select
+        e.id as roleId,e.role_name as role_name,e.created as r_created,e.updated as r_updated,
+        g.id as permId ,g.pval as pval,g.parent as parent,g.name as gname,g.type as gtype,
+        g.leaf as leaf,g.created as p_created,g.updated as p_updated
+
+        from sys_role e
+        left join sys_role_perm f on f.role_id=e.id
+        left join sys_perm g on  g.id= f.perm_id
+        <where>
+            e.id=#{id}
+        </where>
+    </select>
+</mapper>
+
